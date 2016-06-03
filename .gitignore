@@ -18,3 +18,8 @@ nytprof.out
 *.o
 *.bs
 /_eumm/
+
+# Intellij
+.idea/
+*.iml
+*.iws
