@@ -130,3 +130,113 @@ C<EXE_FILES: >
 
 =back
 
+=head2 Wed Jun  8 18:55:06 2016: C<Module> L<Test::Skip::UnlessExistsExecutable|Test::Skip::UnlessExistsExecutable>
+
+=over 4
+
+=item *
+
+C<installed into: /Users/doi_kenji/Documents/perl/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.041>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jun  8 18:55:12 2016: C<Module> L<URI::Escape::XS|URI::Escape::XS>
+
+=over 4
+
+=item *
+
+C<installed into: /Users/doi_kenji/Documents/perl/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.13>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jun  8 18:55:32 2016: C<Module> L<Test::TCP|Test::TCP>
+
+=over 4
+
+=item *
+
+C<installed into: /Users/doi_kenji/Documents/perl/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.16>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jun  8 18:55:36 2016: C<Module> L<POSIX::AtFork|POSIX::AtFork>
+
+=over 4
+
+=item *
+
+C<installed into: /Users/doi_kenji/Documents/perl/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.02>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jun  8 18:55:55 2016: C<Module> L<Cache::Memcached::Fast|Cache::Memcached::Fast>
+
+=over 4
+
+=item *
+
+C<installed into: /Users/doi_kenji/Documents/perl/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.23>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
