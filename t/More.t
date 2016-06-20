@@ -30,7 +30,14 @@ is( $ical->hour,    7,       '  hour()'  );
 is( $ical->day,     17,       '  day()'   );
 is( $ical->month,   10,       '  month()' );
 is( $ical->year,    1964,     '  year()'  );
-
+print pack('a', 'b', 'c');
+print pack 'H*', "\n";
+#map { print $_ . ":"; $_ => 1 } (1 => 1, 2 => 2);
+#map { print $_ . ":"; $_ => 1 } (1, @{[3, 4]});
+my @b = (+{} ,+{});
+@{$b}{0} = (1, 2, 3);
+print @b;
+#print @b{@b};
 
 # Make sure epoch time is being handled sanely.
 my $t1 = Date::ICal->new( epoch => 0 );
