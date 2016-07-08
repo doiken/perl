@@ -1,0 +1,1100 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="194" onload="init(evt)" viewBox="0 0 1200 194" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<defs >
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	.func_g:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	var details, svg;
+	function init(evt) { 
+		details = document.getElementById("details").firstChild; 
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+	}
+
+	// mouse-over for info
+	function s(info) { details.nodeValue = "sub " + info; }
+	function c() { details.nodeValue = ' '; }
+
+	// functions
+	function find_child(parent, name, attr) {
+		var children = parent.childNodes;
+		for (var i=0; i<children.length;i++) {
+			if (children[i].tagName == name)
+				return (attr != undefined) ? children[i].attributes[attr].value : children[i];
+		}
+		return;
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_"+attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_"+attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_"+attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes["width"].value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)/,"");
+		t.attributes["x"].value = parseFloat(r.attributes["x"].value) +3;
+		
+		// Smaller than this size won't fit anything
+		if (w < 2*12*0.59) {
+			t.textContent = "";
+			return;
+		}
+		
+		t.textContent = txt;
+		// Fit in full text width
+		if (/^ *$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+			return;
+		
+		for (var x=txt.length-2; x>0; x--) {
+			if (t.getSubStringLength(0, x+2) <= w) { 
+				t.textContent = txt.substring(0,x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for(var i=0, c=e.childNodes; i<c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes["x"] != undefined) {
+				orig_save(e, "x");
+				e.attributes["x"].value = (parseFloat(e.attributes["x"].value) - x - 10) * ratio + 10;
+				if(e.tagName == "text") e.attributes["x"].value = find_child(e.parentNode, "rect", "x") + 3;
+			}
+			if (e.attributes["width"] != undefined) {
+				orig_save(e, "width");
+				e.attributes["width"].value = parseFloat(e.attributes["width"].value) * ratio;
+			}
+		}
+		
+		if (e.childNodes == undefined) return;
+		for(var i=0, c=e.childNodes; i<c.length; i++) {
+			zoom_child(c[i], x-10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes["x"] != undefined) {
+				orig_save(e, "x");
+				e.attributes["x"].value = 10;
+			}
+			if (e.attributes["width"] != undefined) {
+				orig_save(e, "width");
+				e.attributes["width"].value = parseInt(svg.width.baseVal.value) - (10*2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for(var i=0, c=e.childNodes; i<c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) { 
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr["width"].value);
+		var xmin = parseFloat(attr["x"].value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr["y"].value);
+		var ratio = (svg.width.baseVal.value - 2*10) / width;
+		
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+		
+		var unzoombtn = document.getElementById("unzoom");
+		unzoombtn.style["opacity"] = "1.0";
+		
+		var el = document.getElementsByTagName("g");
+		for(var i=0;i<el.length;i++){
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a["x"].value);
+			var ew = parseFloat(a["width"].value);
+			// Is it an ancestor
+			if (0 == 0) {
+				var upstack = parseFloat(a["y"].value) > ymin;
+			} else {
+				var upstack = parseFloat(a["y"].value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.style["opacity"] = "0.5";
+					zoom_parent(e);
+					e.onclick = function(e){unzoom(); zoom(this);};
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.style["display"] = "none";
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.style["display"] = "none";
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					e.onclick = function(e){zoom(this);};
+					update_text(e);
+				}
+			}
+		}
+	}
+	function unzoom() {
+		var unzoombtn = document.getElementById("unzoom");
+		unzoombtn.style["opacity"] = "0.0";
+		
+		var el = document.getElementsByTagName("g");
+		for(i=0;i<el.length;i++) {
+			el[i].style["display"] = "block";
+			el[i].style["opacity"] = "1";
+			zoom_reset(el[i]);
+			update_text(el[i]);
+		}
+	}	
+
+	// search
+	function reset_search() {
+		var el = document.getElementsByTagName("rect");
+		for (var i=0; i < el.length; i++){
+			orig_load(el[i], "fill")
+		}
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)", "");
+			if (term != null) {
+				search(term)
+			}
+		} else {
+			reset_search();
+			searching = 0;
+			var searchbtn = document.getElementById("search");
+			searchbtn.style["opacity"] = "0.1";
+			searchbtn.firstChild.nodeValue = "Search"
+		}
+	}
+	function search(term) {
+		var re = new RegExp(term);
+		var el = document.getElementsByTagName("g");
+		for (var i=0; i < el.length; i++){
+			var e = el[i];
+			if (e.attributes["class"].value == "func_g") {
+				// Scrape the function name from the onmouseover
+				// callback text. This is a little dirty.
+				var func = e.attributes["onmouseover"].value;
+				if (func != null) {
+					func = func.substr(3);
+					func = func.replace(/ .*/, "");
+					var r = find_child(e, "rect");
+					if (r == null) {
+						// the rect might be wrapped in an anchor
+						// if nameattr href is being used
+						if (r = find_child(e, "a")) {
+						    r = find_child(r, "rect");
+						}
+					}
+				}
+				if (func != null && r != null &&
+				    func.match(re)) {
+					orig_save(r, "fill");
+					r.attributes["fill"].value =
+					    "rgb(230,0,230)";
+					searching = 1;
+				}
+			}
+		}
+		if (searching) {
+			var searchbtn = document.getElementById("search");
+			searchbtn.style["opacity"] = "1.0";
+			searchbtn.firstChild.nodeValue = "Reset Search"
+		}
+	}
+	function searchover(e) {
+		var searchbtn = document.getElementById("search");
+		searchbtn.style["opacity"] = "1.0";
+	}
+	function searchout(e) {
+		var searchbtn = document.getElementById("search");
+		if (searching) {
+			searchbtn.style["opacity"] = "1.0";
+		} else {
+			searchbtn.style["opacity"] = "0.1";
+		}
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="194.0" fill="url(#background)"  />
+<text text-anchor="middle" x="600.00" y="24" font-size="17" font-family="Verdana" fill="rgb(0,0,0)"  >Flame Graph</text>
+<text text-anchor="" x="10.00" y="177" font-size="12" font-family="Verdana" fill="rgb(0,0,0)" id="details" > </text>
+<text text-anchor="" x="10.00" y="24" font-size="12" font-family="Verdana" fill="rgb(0,0,0)" id="unzoom" onclick="unzoom()" style="opacity:0.0;cursor:pointer" >Reset Zoom</text>
+<text text-anchor="" x="1090.00" y="24" font-size="12" font-family="Verdana" fill="rgb(0,0,0)" id="search" onmouseover="searchover()" onmouseout="searchout()" onclick="search_prompt()" style="opacity:0.1;cursor:pointer" >Search</text>
+<g class="func_g" onmouseover="s('strict::unimport (32 microseconds, 0.04%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::unimport (32 microseconds, 0.04%)</title><a xlink:href="strict-pm-2-line.html#47" target="_top"><rect x="652.1" y="81" width="0.5" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="655.14" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::CORE:match (38 microseconds, 0.04%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::CORE:match (38 microseconds, 0.04%)</title><a xlink:href="strict-pm-2-line.html#strict__CORE_match" target="_top"><rect x="145.2" y="113" width="0.5" height="15.0" fill="rgb(242,140,41)" rx="2" ry="2" />
+<text text-anchor="" x="148.23" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (9 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (9 microseconds, 0.01%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="794.9" y="49" width="0.1" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="797.89" y="59.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('FindBin::CORE:ftfile (15 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>FindBin::CORE:ftfile (15 microseconds, 0.02%)</title><a xlink:href="FindBin-pm-4-line.html#FindBin__CORE_ftfile" target="_top"><rect x="380.1" y="81" width="0.2" height="15.0" fill="rgb(237,193,35)" rx="2" ry="2" />
+<text text-anchor="" x="383.15" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (3,388 microseconds, 3.95%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (3,388 microseconds, 3.95%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="148.0" y="97" width="46.6" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="150.97" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >stri..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Basename::BEGIN@371 (23 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Basename::BEGIN@371 (23 microseconds, 0.03%)</title><a xlink:href="File-Basename-pm-10-line.html#371" target="_top"><rect x="938.6" y="97" width="0.3" height="15.0" fill="rgb(237,199,35)" rx="2" ry="2" />
+<text text-anchor="" x="941.58" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::register_categories (99 microseconds, 0.12%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::register_categories (99 microseconds, 0.12%)</title><a xlink:href="warnings-pm-3-line.html#542" target="_top"><rect x="793.4" y="49" width="1.3" height="15.0" fill="rgb(237,93,36)" rx="2" ry="2" />
+<text text-anchor="" x="796.36" y="59.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (10 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (10 microseconds, 0.01%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="667.7" y="65" width="0.2" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="670.73" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Exporter::import (92 microseconds, 0.11%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Exporter::import (92 microseconds, 0.11%)</title><a xlink:href="Exporter-pm-6-line.html#28" target="_top"><rect x="937.3" y="97" width="1.3" height="15.0" fill="rgb(238,94,36)" rx="2" ry="2" />
+<text text-anchor="" x="940.31" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (17 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (17 microseconds, 0.02%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="652.3" y="65" width="0.3" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="655.34" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('XSLoader::load (1,102 microseconds, 1.29%)')" onmouseout="c()" onclick="zoom(this)">
+<title>XSLoader::load (1,102 microseconds, 1.29%)</title><a xlink:href="XSLoader-pm-18-line.html#17" target="_top"><rect x="873.5" y="97" width="15.1" height="15.0" fill="rgb(243,122,41)" rx="2" ry="2" />
+<text text-anchor="" x="876.49" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('version::(bool (320 microseconds, 0.37%)')" onmouseout="c()" onclick="zoom(this)">
+<title>version::(bool (320 microseconds, 0.37%)</title><a xlink:href="Klass-pl-1-line.html#version___bool" target="_top"><rect x="1135.8" y="97" width="4.4" height="15.0" fill="rgb(237,136,36)" rx="2" ry="2" />
+<text text-anchor="" x="1138.79" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('lib::CORE:ftis (20 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>lib::CORE:ftis (20 microseconds, 0.02%)</title><a xlink:href="lib-pm-13-line.html#lib__CORE_ftis" target="_top"><rect x="1142.1" y="97" width="0.3" height="15.0" fill="rgb(234,129,32)" rx="2" ry="2" />
+<text text-anchor="" x="1145.11" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@434 (68 microseconds, 0.08%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@434 (68 microseconds, 0.08%)</title><a xlink:href="Carp-pm-5-line.html#434" target="_top"><rect x="650.5" y="97" width="1.0" height="15.0" fill="rgb(241,109,39)" rx="2" ry="2" />
+<text text-anchor="" x="653.54" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('parent::CORE:subst (10 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>parent::CORE:subst (10 microseconds, 0.01%)</title><a xlink:href="parent-pm-17-line.html#parent__CORE_subst" target="_top"><rect x="145.1" y="81" width="0.1" height="15.0" fill="rgb(237,149,35)" rx="2" ry="2" />
+<text text-anchor="" x="148.09" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (35 microseconds, 0.04%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (35 microseconds, 0.04%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="652.6" y="81" width="0.5" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="655.58" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@433 (124 microseconds, 0.14%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@433 (124 microseconds, 0.14%)</title><a xlink:href="Carp-pm-5-line.html#433" target="_top"><rect x="648.8" y="97" width="1.7" height="15.0" fill="rgb(242,109,41)" rx="2" ry="2" />
+<text text-anchor="" x="651.84" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('version::(cmp (10 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>version::(cmp (10 microseconds, 0.01%)</title><a xlink:href="Klass-pl-1-line.html#version___cmp" target="_top"><rect x="1140.2" y="97" width="0.1" height="15.0" fill="rgb(238,136,36)" rx="2" ry="2" />
+<text text-anchor="" x="1143.19" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Exporter::CORE:subst (7 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Exporter::CORE:subst (7 microseconds, 0.01%)</title><a xlink:href="Exporter-pm-6-line.html#Exporter__CORE_subst" target="_top"><rect x="873.4" y="81" width="0.1" height="15.0" fill="rgb(237,94,35)" rx="2" ry="2" />
+<text text-anchor="" x="876.38" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Basename::BEGIN@50 (60 microseconds, 0.07%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Basename::BEGIN@50 (60 microseconds, 0.07%)</title><a xlink:href="File-Basename-pm-10-line.html#50" target="_top"><rect x="939.3" y="97" width="0.8" height="15.0" fill="rgb(228,199,25)" rx="2" ry="2" />
+<text text-anchor="" x="942.26" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::BEGIN@8 (20 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::BEGIN@8 (20 microseconds, 0.02%)</title><a xlink:href="vars-pm-8-line.html#8" target="_top"><rect x="794.7" y="81" width="0.3" height="15.0" fill="rgb(230,101,28)" rx="2" ry="2" />
+<text text-anchor="" x="797.72" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Klass::new (31 microseconds, 0.04%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Klass::new (31 microseconds, 0.04%)</title><a xlink:href="lib-Klass-pm-15-line.html#7" target="_top"><rect x="10.9" y="129" width="0.4" height="15.0" fill="rgb(235,141,33)" rx="2" ry="2" />
+<text text-anchor="" x="13.90" y="139.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Basename::CORE:match (765 microseconds, 0.89%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Basename::CORE:match (765 microseconds, 0.89%)</title><a xlink:href="File-Basename-pm-10-line.html#File__Basename__CORE_match" target="_top"><rect x="369.5" y="65" width="10.5" height="15.0" fill="rgb(242,199,41)" rx="2" ry="2" />
+<text text-anchor="" x="372.48" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Basename::BEGIN@51 (24 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Basename::BEGIN@51 (24 microseconds, 0.03%)</title><a xlink:href="File-Basename-pm-10-line.html#51" target="_top"><rect x="940.1" y="97" width="0.3" height="15.0" fill="rgb(226,199,23)" rx="2" ry="2" />
+<text text-anchor="" x="943.09" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::CORE:match (26 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::CORE:match (26 microseconds, 0.03%)</title><a xlink:href="vars-pm-8-line.html#vars__CORE_match" target="_top"><rect x="1031.8" y="65" width="0.4" height="15.0" fill="rgb(242,101,41)" rx="2" ry="2" />
+<text text-anchor="" x="1034.80" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (13 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (13 microseconds, 0.02%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="1027.8" y="65" width="0.2" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="1030.81" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::_mkMask (10 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::_mkMask (10 microseconds, 0.01%)</title><a xlink:href="warnings-pm-3-line.html#533" target="_top"><rect x="794.6" y="33" width="0.1" height="15.0" fill="rgb(236,93,34)" rx="2" ry="2" />
+<text text-anchor="" x="797.58" y="43.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('FindBin::BEGIN@85 (6,493 microseconds, 7.57%)')" onmouseout="c()" onclick="zoom(this)">
+<title>FindBin::BEGIN@85 (6,493 microseconds, 7.57%)</title><a xlink:href="FindBin-pm-4-line.html#85" target="_top"><rect x="942.8" y="113" width="89.4" height="15.0" fill="rgb(245,193,44)" rx="2" ry="2" />
+<text text-anchor="" x="945.80" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >FindBin::B..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('FindBin::BEGIN@83 (15,962 microseconds, 18.61%)')" onmouseout="c()" onclick="zoom(this)">
+<title>FindBin::BEGIN@83 (15,962 microseconds, 18.61%)</title><a xlink:href="FindBin-pm-4-line.html#83" target="_top"><rect x="669.0" y="113" width="219.6" height="15.0" fill="rgb(249,193,48)" rx="2" ry="2" />
+<text text-anchor="" x="671.99" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >FindBin::BEGIN@83</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::BEGIN@7 (664 microseconds, 0.77%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::BEGIN@7 (664 microseconds, 0.77%)</title><a xlink:href="vars-pm-8-line.html#7" target="_top"><rect x="785.6" y="81" width="9.1" height="15.0" fill="rgb(232,101,29)" rx="2" ry="2" />
+<text text-anchor="" x="788.59" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Config::FETCH (15 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Config::FETCH (15 microseconds, 0.02%)</title><a xlink:href="Config-pm-14-line.html#67" target="_top"><rect x="1090.1" y="113" width="0.2" height="15.0" fill="rgb(250,162,49)" rx="2" ry="2" />
+<text text-anchor="" x="1093.11" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@448 (47 microseconds, 0.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@448 (47 microseconds, 0.05%)</title><a xlink:href="Carp-pm-5-line.html#448" target="_top"><rect x="651.9" y="97" width="0.7" height="15.0" fill="rgb(232,109,30)" rx="2" ry="2" />
+<text text-anchor="" x="654.93" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Config::BEGIN@10 (34 microseconds, 0.04%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Config::BEGIN@10 (34 microseconds, 0.04%)</title><a xlink:href="Config-pm-14-line.html#10" target="_top"><rect x="1130.7" y="97" width="0.5" height="15.0" fill="rgb(232,162,30)" rx="2" ry="2" />
+<text text-anchor="" x="1133.74" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Klass::age (11 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Klass::age (11 microseconds, 0.01%)</title><a xlink:href="lib-Klass-pm-15-line.html#17" target="_top"><rect x="10.7" y="97" width="0.2" height="15.0" fill="rgb(248,141,47)" rx="2" ry="2" />
+<text text-anchor="" x="13.75" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Spec::BEGIN@3 (98 microseconds, 0.11%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Spec::BEGIN@3 (98 microseconds, 0.11%)</title><a xlink:href="File-Spec-pm-11-line.html#3" target="_top"><rect x="1023.9" y="97" width="1.4" height="15.0" fill="rgb(239,199,37)" rx="2" ry="2" />
+<text text-anchor="" x="1026.91" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Cwd::CORE:fteexec (5,483 microseconds, 6.39%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Cwd::CORE:fteexec (5,483 microseconds, 6.39%)</title><a xlink:href="Cwd-pm-7-line.html#Cwd__CORE_fteexec" target="_top"><rect x="796.1" y="97" width="75.5" height="15.0" fill="rgb(237,115,35)" rx="2" ry="2" />
+<text text-anchor="" x="799.14" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Cwd::COR..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('lib::CORE:ftdir (11 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>lib::CORE:ftdir (11 microseconds, 0.01%)</title><a xlink:href="lib-pm-13-line.html#lib__CORE_ftdir" target="_top"><rect x="1143.4" y="97" width="0.1" height="15.0" fill="rgb(238,129,37)" rx="2" ry="2" />
+<text text-anchor="" x="1146.37" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Cwd::abs_path (118 microseconds, 0.14%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Cwd::abs_path (118 microseconds, 0.14%)</title><a xlink:href="Cwd-pm-7-line.html#Cwd__abs_path" target="_top"><rect x="359.6" y="81" width="1.6" height="15.0" fill="rgb(240,115,39)" rx="2" ry="2" />
+<text text-anchor="" x="362.61" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Klass::says (115 microseconds, 0.13%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Klass::says (115 microseconds, 0.13%)</title><a xlink:href="lib-Klass-pm-15-line.html#22" target="_top"><rect x="11.3" y="129" width="1.6" height="15.0" fill="rgb(245,141,44)" rx="2" ry="2" />
+<text text-anchor="" x="14.33" y="139.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Exporter::import (50 microseconds, 0.06%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Exporter::import (50 microseconds, 0.06%)</title><a xlink:href="Exporter-pm-6-line.html#28" target="_top"><rect x="771.1" y="81" width="0.7" height="15.0" fill="rgb(238,94,36)" rx="2" ry="2" />
+<text text-anchor="" x="774.12" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::BEGIN@3 (40 microseconds, 0.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::BEGIN@3 (40 microseconds, 0.05%)</title><a xlink:href="vars-pm-8-line.html#3" target="_top"><rect x="785.0" y="81" width="0.6" height="15.0" fill="rgb(239,101,37)" rx="2" ry="2" />
+<text text-anchor="" x="788.03" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::unimport (41 microseconds, 0.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::unimport (41 microseconds, 0.05%)</title><a xlink:href="warnings-pm-3-line.html#421" target="_top"><rect x="650.9" y="81" width="0.6" height="15.0" fill="rgb(238,93,36)" rx="2" ry="2" />
+<text text-anchor="" x="653.92" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@105 (67 microseconds, 0.08%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@105 (67 microseconds, 0.08%)</title><a xlink:href="Carp-pm-5-line.html#105" target="_top"><rect x="646.0" y="97" width="0.9" height="15.0" fill="rgb(244,109,43)" rx="2" ry="2" />
+<text text-anchor="" x="648.96" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Cwd::BEGIN@823 (30 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Cwd::BEGIN@823 (30 microseconds, 0.03%)</title><a xlink:href="Cwd-pm-7-line.html#823" target="_top"><rect x="795.7" y="97" width="0.4" height="15.0" fill="rgb(241,115,39)" rx="2" ry="2" />
+<text text-anchor="" x="798.73" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('parent::BEGIN@2 (97 microseconds, 0.11%)')" onmouseout="c()" onclick="zoom(this)">
+<title>parent::BEGIN@2 (97 microseconds, 0.11%)</title><a xlink:href="parent-pm-17-line.html#2" target="_top"><rect x="140.3" y="97" width="1.3" height="15.0" fill="rgb(240,149,39)" rx="2" ry="2" />
+<text text-anchor="" x="143.28" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (26 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (26 microseconds, 0.03%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="1135.0" y="65" width="0.3" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="1137.96" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (39 microseconds, 0.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (39 microseconds, 0.05%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="770.4" y="81" width="0.5" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="773.41" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Config::BEGIN@9 (91 microseconds, 0.11%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Config::BEGIN@9 (91 microseconds, 0.11%)</title><a xlink:href="Config-pm-14-line.html#9" target="_top"><rect x="1134.1" y="97" width="1.2" height="15.0" fill="rgb(228,162,26)" rx="2" ry="2" />
+<text text-anchor="" x="1137.07" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::import (89 microseconds, 0.10%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::import (89 microseconds, 0.10%)</title><a xlink:href="vars-pm-8-line.html#10" target="_top"><rect x="1030.9" y="81" width="1.3" height="15.0" fill="rgb(238,101,36)" rx="2" ry="2" />
+<text text-anchor="" x="1033.93" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::CORE:match (60 microseconds, 0.07%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::CORE:match (60 microseconds, 0.07%)</title><a xlink:href="vars-pm-8-line.html#vars__CORE_match" target="_top"><rect x="143.2" y="65" width="0.8" height="15.0" fill="rgb(242,101,41)" rx="2" ry="2" />
+<text text-anchor="" x="146.20" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::import (560 microseconds, 0.65%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::import (560 microseconds, 0.65%)</title><a xlink:href="warnings-pm-3-line.html#406" target="_top"><rect x="307.2" y="113" width="7.7" height="15.0" fill="rgb(238,93,36)" rx="2" ry="2" />
+<text text-anchor="" x="310.24" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('FindBin::BEGIN@80 (20,078 microseconds, 23.41%)')" onmouseout="c()" onclick="zoom(this)">
+<title>FindBin::BEGIN@80 (20,078 microseconds, 23.41%)</title><a xlink:href="FindBin-pm-4-line.html#80" target="_top"><rect x="392.7" y="113" width="276.3" height="15.0" fill="rgb(237,193,35)" rx="2" ry="2" />
+<text text-anchor="" x="395.71" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >FindBin::BEGIN@80</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('FindBin::BEGIN@166 (2,503 microseconds, 2.92%)')" onmouseout="c()" onclick="zoom(this)">
+<title>FindBin::BEGIN@166 (2,503 microseconds, 2.92%)</title><a xlink:href="FindBin-pm-4-line.html#166" target="_top"><rect x="358.3" y="113" width="34.4" height="15.0" fill="rgb(236,193,34)" rx="2" ry="2" />
+<text text-anchor="" x="361.27" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Fi..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('lib::_get_dirs (10 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>lib::_get_dirs (10 microseconds, 0.01%)</title><a xlink:href="lib-pm-13-line.html#73" target="_top"><rect x="1142.5" y="97" width="0.1" height="15.0" fill="rgb(235,129,33)" rx="2" ry="2" />
+<text text-anchor="" x="1145.46" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Basename::CORE:regcomp (40 microseconds, 0.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Basename::CORE:regcomp (40 microseconds, 0.05%)</title><a xlink:href="File-Basename-pm-10-line.html#File__Basename__CORE_regcomp" target="_top"><rect x="942.3" y="81" width="0.5" height="15.0" fill="rgb(238,199,36)" rx="2" ry="2" />
+<text text-anchor="" x="945.26" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (48 microseconds, 0.06%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (48 microseconds, 0.06%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="1134.7" y="81" width="0.6" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="1137.66" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('lib::import (80 microseconds, 0.09%)')" onmouseout="c()" onclick="zoom(this)">
+<title>lib::import (80 microseconds, 0.09%)</title><a xlink:href="lib-pm-13-line.html#18" target="_top"><rect x="1142.7" y="113" width="1.1" height="15.0" fill="rgb(238,129,36)" rx="2" ry="2" />
+<text text-anchor="" x="1145.73" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('main::BEGIN@3 (8,746 microseconds, 10.20%)')" onmouseout="c()" onclick="zoom(this)">
+<title>main::BEGIN@3 (8,746 microseconds, 10.20%)</title><a xlink:href="Klass-pl-1-line.html#3" target="_top"><rect x="194.6" y="129" width="120.3" height="15.0" fill="rgb(239,83,37)" rx="2" ry="2" />
+<text text-anchor="" x="197.59" y="139.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >main::BEGIN@3</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@5 (21 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@5 (21 microseconds, 0.02%)</title><a xlink:href="Carp-pm-5-line.html#5" target="_top"><rect x="653.1" y="97" width="0.3" height="15.0" fill="rgb(235,109,33)" rx="2" ry="2" />
+<text text-anchor="" x="656.06" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Cwd::BEGIN@170 (75 microseconds, 0.09%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Cwd::BEGIN@170 (75 microseconds, 0.09%)</title><a xlink:href="Cwd-pm-7-line.html#170" target="_top"><rect x="769.9" y="97" width="1.0" height="15.0" fill="rgb(240,115,38)" rx="2" ry="2" />
+<text text-anchor="" x="772.91" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::_bits (26 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::_bits (26 microseconds, 0.03%)</title><a xlink:href="warnings-pm-3-line.html#371" target="_top"><rect x="81.3" y="81" width="0.3" height="15.0" fill="rgb(233,93,31)" rx="2" ry="2" />
+<text text-anchor="" x="84.25" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (26 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (26 microseconds, 0.03%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="23.9" y="97" width="0.3" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="26.86" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Exporter::import (106 microseconds, 0.12%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Exporter::import (106 microseconds, 0.12%)</title><a xlink:href="Exporter-pm-6-line.html#28" target="_top"><rect x="872.0" y="97" width="1.5" height="15.0" fill="rgb(238,94,36)" rx="2" ry="2" />
+<text text-anchor="" x="875.03" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('main::BEGIN@14 (876 microseconds, 1.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>main::BEGIN@14 (876 microseconds, 1.02%)</title><a xlink:href="Klass-pl-1-line.html#14" target="_top"><rect x="12.9" y="129" width="12.1" height="15.0" fill="rgb(243,83,42)" rx="2" ry="2" />
+<text text-anchor="" x="15.91" y="139.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::unimport (28 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::unimport (28 microseconds, 0.03%)</title><a xlink:href="strict-pm-2-line.html#47" target="_top"><rect x="1027.6" y="81" width="0.4" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="1030.60" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Klass::says (29 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Klass::says (29 microseconds, 0.03%)</title><a xlink:href="lib-Klass-pm-15-line.html#22" target="_top"><rect x="10.5" y="113" width="0.4" height="15.0" fill="rgb(245,141,44)" rx="2" ry="2" />
+<text text-anchor="" x="13.50" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@18 (60 microseconds, 0.07%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@18 (60 microseconds, 0.07%)</title><a xlink:href="Carp-pm-5-line.html#18" target="_top"><rect x="647.1" y="97" width="0.8" height="15.0" fill="rgb(236,109,34)" rx="2" ry="2" />
+<text text-anchor="" x="650.06" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('lib::CORE:ftis (10 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>lib::CORE:ftis (10 microseconds, 0.01%)</title><a xlink:href="lib-pm-13-line.html#lib__CORE_ftis" target="_top"><rect x="1143.5" y="97" width="0.2" height="15.0" fill="rgb(234,129,32)" rx="2" ry="2" />
+<text text-anchor="" x="1146.53" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Basename::BEGIN@52 (30 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Basename::BEGIN@52 (30 microseconds, 0.03%)</title><a xlink:href="File-Basename-pm-10-line.html#52" target="_top"><rect x="940.4" y="97" width="0.4" height="15.0" fill="rgb(242,199,41)" rx="2" ry="2" />
+<text text-anchor="" x="943.42" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::import (49 microseconds, 0.06%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::import (49 microseconds, 0.06%)</title><a xlink:href="warnings-pm-3-line.html#406" target="_top"><rect x="80.9" y="97" width="0.7" height="15.0" fill="rgb(238,93,36)" rx="2" ry="2" />
+<text text-anchor="" x="83.93" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (43 microseconds, 0.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (43 microseconds, 0.05%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="939.5" y="81" width="0.6" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="942.50" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (12 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (12 microseconds, 0.01%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="1133.9" y="65" width="0.2" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="1136.90" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::import (38 microseconds, 0.04%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::import (38 microseconds, 0.04%)</title><a xlink:href="warnings-pm-3-line.html#406" target="_top"><rect x="24.4" y="97" width="0.6" height="15.0" fill="rgb(238,93,36)" rx="2" ry="2" />
+<text text-anchor="" x="27.44" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (30 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (30 microseconds, 0.03%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="1140.6" y="97" width="0.4" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="1143.56" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Klass::age (70 microseconds, 0.08%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Klass::age (70 microseconds, 0.08%)</title><a xlink:href="lib-Klass-pm-15-line.html#17" target="_top"><rect x="11.9" y="113" width="1.0" height="15.0" fill="rgb(248,141,47)" rx="2" ry="2" />
+<text text-anchor="" x="14.95" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::CORE:match (10 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::CORE:match (10 microseconds, 0.01%)</title><a xlink:href="vars-pm-8-line.html#vars__CORE_match" target="_top"><rect x="795.5" y="65" width="0.2" height="15.0" fill="rgb(242,101,41)" rx="2" ry="2" />
+<text text-anchor="" x="798.53" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('lib::BEGIN@6 (3,634 microseconds, 4.24%)')" onmouseout="c()" onclick="zoom(this)">
+<title>lib::BEGIN@6 (3,634 microseconds, 4.24%)</title><a xlink:href="lib-pm-13-line.html#6" target="_top"><rect x="1090.3" y="113" width="50.0" height="15.0" fill="rgb(233,129,31)" rx="2" ry="2" />
+<text text-anchor="" x="1093.32" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >lib::..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::CORE:match (28 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::CORE:match (28 microseconds, 0.03%)</title><a xlink:href="warnings-pm-3-line.html#warnings__CORE_match" target="_top"><rect x="305.8" y="113" width="0.4" height="15.0" fill="rgb(242,93,41)" rx="2" ry="2" />
+<text text-anchor="" x="308.81" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('main::BEGIN@2 (3,587 microseconds, 4.18%)')" onmouseout="c()" onclick="zoom(this)">
+<title>main::BEGIN@2 (3,587 microseconds, 4.18%)</title><a xlink:href="Klass-pl-1-line.html#2" target="_top"><rect x="145.2" y="129" width="49.4" height="15.0" fill="rgb(240,83,39)" rx="2" ry="2" />
+<text text-anchor="" x="148.23" y="139.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >main..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Klass::CORE:print (50 microseconds, 0.06%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Klass::CORE:print (50 microseconds, 0.06%)</title><a xlink:href="lib-Klass-pm-15-line.html#Klass__CORE_print" target="_top"><rect x="12.2" y="97" width="0.7" height="15.0" fill="rgb(238,141,36)" rx="2" ry="2" />
+<text text-anchor="" x="15.22" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::unimport (80 microseconds, 0.09%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::unimport (80 microseconds, 0.09%)</title><a xlink:href="strict-pm-2-line.html#47" target="_top"><rect x="649.4" y="81" width="1.1" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="652.44" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (20 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (20 microseconds, 0.02%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="1140.7" y="81" width="0.3" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="1143.70" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@17 (13 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@17 (13 microseconds, 0.02%)</title><a xlink:href="Carp-pm-5-line.html#17" target="_top"><rect x="646.9" y="97" width="0.2" height="15.0" fill="rgb(238,109,36)" rx="2" ry="2" />
+<text text-anchor="" x="649.89" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@4 (13 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@4 (13 microseconds, 0.02%)</title><a xlink:href="Carp-pm-5-line.html#4" target="_top"><rect x="648.7" y="97" width="0.1" height="15.0" fill="rgb(237,109,35)" rx="2" ry="2" />
+<text text-anchor="" x="651.67" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::import (16 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::import (16 microseconds, 0.02%)</title><a xlink:href="warnings-pm-3-line.html#406" target="_top"><rect x="940.6" y="81" width="0.2" height="15.0" fill="rgb(238,93,36)" rx="2" ry="2" />
+<text text-anchor="" x="943.62" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (51 microseconds, 0.06%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (51 microseconds, 0.06%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="1024.6" y="81" width="0.7" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="1027.56" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('FindBin::init (2,491 microseconds, 2.90%)')" onmouseout="c()" onclick="zoom(this)">
+<title>FindBin::init (2,491 microseconds, 2.90%)</title><a xlink:href="FindBin-pm-4-line.html#109" target="_top"><rect x="358.4" y="97" width="34.3" height="15.0" fill="rgb(236,193,34)" rx="2" ry="2" />
+<text text-anchor="" x="361.43" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Fi..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::unimport (40 microseconds, 0.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::unimport (40 microseconds, 0.05%)</title><a xlink:href="strict-pm-2-line.html#47" target="_top"><rect x="647.3" y="81" width="0.6" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="650.34" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Basename::BEGIN@42 (26 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Basename::BEGIN@42 (26 microseconds, 0.03%)</title><a xlink:href="File-Basename-pm-10-line.html#42" target="_top"><rect x="938.9" y="97" width="0.4" height="15.0" fill="rgb(243,199,42)" rx="2" ry="2" />
+<text text-anchor="" x="941.91" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (20 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (20 microseconds, 0.02%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="653.9" y="65" width="0.2" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="656.86" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Config::import (27 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Config::import (27 microseconds, 0.03%)</title><a xlink:href="Config-pm-14-line.html#40" target="_top"><rect x="1135.4" y="97" width="0.4" height="15.0" fill="rgb(238,162,36)" rx="2" ry="2" />
+<text text-anchor="" x="1138.42" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::CORE:match (64 microseconds, 0.07%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::CORE:match (64 microseconds, 0.07%)</title><a xlink:href="vars-pm-8-line.html#vars__CORE_match" target="_top"><rect x="1132.6" y="65" width="0.9" height="15.0" fill="rgb(242,101,41)" rx="2" ry="2" />
+<text text-anchor="" x="1135.60" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::import (144 microseconds, 0.17%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::import (144 microseconds, 0.17%)</title><a xlink:href="vars-pm-8-line.html#10" target="_top"><rect x="142.1" y="81" width="1.9" height="15.0" fill="rgb(238,101,36)" rx="2" ry="2" />
+<text text-anchor="" x="145.05" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (30 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (30 microseconds, 0.03%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="1024.9" y="65" width="0.4" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="1027.85" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::import (152 microseconds, 0.18%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::import (152 microseconds, 0.18%)</title><a xlink:href="vars-pm-8-line.html#10" target="_top"><rect x="1131.4" y="81" width="2.1" height="15.0" fill="rgb(238,101,36)" rx="2" ry="2" />
+<text text-anchor="" x="1134.39" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::register::import (111 microseconds, 0.13%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::register::import (111 microseconds, 0.13%)</title><a xlink:href="warnings-register-pm-9-line.html#38" target="_top"><rect x="793.2" y="65" width="1.5" height="15.0" fill="rgb(238,93,36)" rx="2" ry="2" />
+<text text-anchor="" x="796.19" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('lib::CORE:ftdir (15 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>lib::CORE:ftdir (15 microseconds, 0.02%)</title><a xlink:href="lib-pm-13-line.html#lib__CORE_ftdir" target="_top"><rect x="1141.9" y="97" width="0.2" height="15.0" fill="rgb(238,129,37)" rx="2" ry="2" />
+<text text-anchor="" x="1144.90" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Exporter::import (81 microseconds, 0.09%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Exporter::import (81 microseconds, 0.09%)</title><a xlink:href="Exporter-pm-6-line.html#28" target="_top"><rect x="667.9" y="97" width="1.1" height="15.0" fill="rgb(238,94,36)" rx="2" ry="2" />
+<text text-anchor="" x="670.87" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::unimport (38 microseconds, 0.04%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::unimport (38 microseconds, 0.04%)</title><a xlink:href="strict-pm-2-line.html#47" target="_top"><rect x="653.6" y="81" width="0.5" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="656.62" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (18 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (18 microseconds, 0.02%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="652.8" y="65" width="0.3" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="655.82" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Basename::fileparse (1,364 microseconds, 1.59%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Basename::fileparse (1,364 microseconds, 1.59%)</title><a xlink:href="File-Basename-pm-10-line.html#104" target="_top"><rect x="361.2" y="81" width="18.8" height="15.0" fill="rgb(243,199,42)" rx="2" ry="2" />
+<text text-anchor="" x="364.23" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('main::BEGIN@22 (5,778 microseconds, 6.74%)')" onmouseout="c()" onclick="zoom(this)">
+<title>main::BEGIN@22 (5,778 microseconds, 6.74%)</title><a xlink:href="Klass-pl-1-line.html#22" target="_top"><rect x="65.7" y="129" width="79.5" height="15.0" fill="rgb(245,83,44)" rx="2" ry="2" />
+<text text-anchor="" x="68.72" y="139.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >main::BEG..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('parent::BEGIN@2 (64 microseconds, 0.07%)')" onmouseout="c()" onclick="zoom(this)">
+<title>parent::BEGIN@2 (64 microseconds, 0.07%)</title><a xlink:href="parent-pm-17-line.html#2" target="_top"><rect x="137.1" y="97" width="0.9" height="15.0" fill="rgb(240,149,39)" rx="2" ry="2" />
+<text text-anchor="" x="140.07" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Child::says (66 microseconds, 0.08%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Child::says (66 microseconds, 0.08%)</title><a xlink:href="lib-Child-pm-16-line.html#7" target="_top"><rect x="10.0" y="129" width="0.9" height="15.0" fill="rgb(245,119,44)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="139.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Child::BEGIN@3 (59 microseconds, 0.07%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Child::BEGIN@3 (59 microseconds, 0.07%)</title><a xlink:href="lib-Child-pm-16-line.html#3" target="_top"><rect x="80.8" y="113" width="0.8" height="15.0" fill="rgb(239,119,37)" rx="2" ry="2" />
+<text text-anchor="" x="83.80" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (57 microseconds, 0.07%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (57 microseconds, 0.07%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="140.8" y="65" width="0.8" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="143.82" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('FindBin::CORE:readlink (898 microseconds, 1.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>FindBin::CORE:readlink (898 microseconds, 1.05%)</title><a xlink:href="FindBin-pm-4-line.html#FindBin__CORE_readlink" target="_top"><rect x="380.3" y="81" width="12.4" height="15.0" fill="rgb(236,193,34)" rx="2" ry="2" />
+<text text-anchor="" x="383.35" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Spec::Unix::file_name_is_absolute (10 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Spec::Unix::file_name_is_absolute (10 microseconds, 0.01%)</title><a xlink:href="File-Spec-Unix-pm-12-line.html#212" target="_top"><rect x="380.0" y="81" width="0.1" height="15.0" fill="rgb(240,199,38)" rx="2" ry="2" />
+<text text-anchor="" x="383.00" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('lib::BEGIN@8 (48 microseconds, 0.06%)')" onmouseout="c()" onclick="zoom(this)">
+<title>lib::BEGIN@8 (48 microseconds, 0.06%)</title><a xlink:href="lib-pm-13-line.html#8" target="_top"><rect x="1140.3" y="113" width="0.7" height="15.0" fill="rgb(230,129,28)" rx="2" ry="2" />
+<text text-anchor="" x="1143.32" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (27 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (27 microseconds, 0.03%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="1030.3" y="65" width="0.3" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="1033.25" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Spec::BEGIN@4 (142 microseconds, 0.17%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Spec::BEGIN@4 (142 microseconds, 0.17%)</title><a xlink:href="File-Spec-pm-11-line.html#4" target="_top"><rect x="1025.3" y="97" width="1.9" height="15.0" fill="rgb(237,199,35)" rx="2" ry="2" />
+<text text-anchor="" x="1028.26" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Cwd::BEGIN@172 (1,734 microseconds, 2.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Cwd::BEGIN@172 (1,734 microseconds, 2.02%)</title><a xlink:href="Cwd-pm-7-line.html#172" target="_top"><rect x="771.8" y="97" width="23.9" height="15.0" fill="rgb(254,115,54)" rx="2" ry="2" />
+<text text-anchor="" x="774.81" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >C..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::unimport (19 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::unimport (19 microseconds, 0.02%)</title><a xlink:href="warnings-pm-3-line.html#421" target="_top"><rect x="651.7" y="81" width="0.2" height="15.0" fill="rgb(238,93,36)" rx="2" ry="2" />
+<text text-anchor="" x="654.67" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (52 microseconds, 0.06%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (52 microseconds, 0.06%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="139.6" y="65" width="0.7" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="142.57" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@4 (35 microseconds, 0.04%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@4 (35 microseconds, 0.04%)</title><a xlink:href="Carp-pm-5-line.html#4" target="_top"><rect x="652.6" y="97" width="0.5" height="15.0" fill="rgb(237,109,35)" rx="2" ry="2" />
+<text text-anchor="" x="655.58" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('lib::_get_dirs (10 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>lib::_get_dirs (10 microseconds, 0.01%)</title><a xlink:href="lib-pm-13-line.html#73" target="_top"><rect x="1143.7" y="97" width="0.1" height="15.0" fill="rgb(235,129,33)" rx="2" ry="2" />
+<text text-anchor="" x="1146.70" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (3,417 microseconds, 3.98%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (3,417 microseconds, 3.98%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="147.6" y="113" width="47.0" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="150.56" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >stri..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::import (128 microseconds, 0.15%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::import (128 microseconds, 0.15%)</title><a xlink:href="vars-pm-8-line.html#10" target="_top"><rect x="1025.5" y="81" width="1.7" height="15.0" fill="rgb(238,101,36)" rx="2" ry="2" />
+<text text-anchor="" x="1028.46" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Cwd::CORE:regcomp (32 microseconds, 0.04%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Cwd::CORE:regcomp (32 microseconds, 0.04%)</title><a xlink:href="Cwd-pm-7-line.html#Cwd__CORE_regcomp" target="_top"><rect x="871.6" y="97" width="0.4" height="15.0" fill="rgb(238,115,36)" rx="2" ry="2" />
+<text text-anchor="" x="874.59" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Spec::Unix::BEGIN@4 (111 microseconds, 0.13%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Spec::Unix::BEGIN@4 (111 microseconds, 0.13%)</title><a xlink:href="File-Spec-Unix-pm-12-line.html#4" target="_top"><rect x="1030.6" y="97" width="1.6" height="15.0" fill="rgb(237,199,35)" rx="2" ry="2" />
+<text text-anchor="" x="1033.62" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Basename::fileparse_set_fstype (142 microseconds, 0.17%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Basename::fileparse_set_fstype (142 microseconds, 0.17%)</title><a xlink:href="File-Basename-pm-10-line.html#376" target="_top"><rect x="940.8" y="97" width="2.0" height="15.0" fill="rgb(250,199,49)" rx="2" ry="2" />
+<text text-anchor="" x="943.84" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('main::BEGIN@2.1 (54 microseconds, 0.06%)')" onmouseout="c()" onclick="zoom(this)">
+<title>main::BEGIN@2.1 (54 microseconds, 0.06%)</title><a xlink:href="lib-Klass-pm-15-line.html#2" target="_top"><rect x="24.2" y="113" width="0.8" height="15.0" fill="rgb(235,83,33)" rx="2" ry="2" />
+<text text-anchor="" x="27.22" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::import (10 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::import (10 microseconds, 0.01%)</title><a xlink:href="warnings-pm-3-line.html#406" target="_top"><rect x="653.2" y="81" width="0.2" height="15.0" fill="rgb(238,93,36)" rx="2" ry="2" />
+<text text-anchor="" x="656.22" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (137 microseconds, 0.16%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (137 microseconds, 0.16%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="1028.7" y="81" width="1.9" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="1031.74" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('main::BEGIN@1 (45 microseconds, 0.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>main::BEGIN@1 (45 microseconds, 0.05%)</title><a xlink:href="lib-Klass-pm-15-line.html#1" target="_top"><rect x="23.6" y="113" width="0.6" height="15.0" fill="rgb(225,83,22)" rx="2" ry="2" />
+<text text-anchor="" x="26.60" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Config::BEGIN@47 (42 microseconds, 0.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Config::BEGIN@47 (42 microseconds, 0.05%)</title><a xlink:href="Config-pm-14-line.html#47" target="_top"><rect x="1133.5" y="97" width="0.6" height="15.0" fill="rgb(234,162,32)" rx="2" ry="2" />
+<text text-anchor="" x="1136.48" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (14 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (14 microseconds, 0.02%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="80.6" y="81" width="0.2" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="83.61" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::unimport (22 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::unimport (22 microseconds, 0.03%)</title><a xlink:href="strict-pm-2-line.html#47" target="_top"><rect x="1133.8" y="81" width="0.3" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="1136.76" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('main::BEGIN@5 (52,119 microseconds, 60.78%)')" onmouseout="c()" onclick="zoom(this)">
+<title>main::BEGIN@5 (52,119 microseconds, 60.78%)</title><a xlink:href="Klass-pl-1-line.html#5" target="_top"><rect x="314.9" y="129" width="717.3" height="15.0" fill="rgb(235,83,33)" rx="2" ry="2" />
+<text text-anchor="" x="317.94" y="139.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >main::BEGIN@5</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Spec::Unix::BEGIN@149 (55 microseconds, 0.06%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Spec::Unix::BEGIN@149 (55 microseconds, 0.06%)</title><a xlink:href="File-Spec-Unix-pm-12-line.html#149" target="_top"><rect x="1027.2" y="97" width="0.8" height="15.0" fill="rgb(233,199,31)" rx="2" ry="2" />
+<text text-anchor="" x="1030.22" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Exporter::import (42 microseconds, 0.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Exporter::import (42 microseconds, 0.05%)</title><a xlink:href="Exporter-pm-6-line.html#28" target="_top"><rect x="357.7" y="113" width="0.6" height="15.0" fill="rgb(238,94,36)" rx="2" ry="2" />
+<text text-anchor="" x="360.69" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@67 (57 microseconds, 0.07%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@67 (57 microseconds, 0.07%)</title><a xlink:href="Carp-pm-5-line.html#67" target="_top"><rect x="653.4" y="97" width="0.7" height="15.0" fill="rgb(232,109,30)" rx="2" ry="2" />
+<text text-anchor="" x="656.35" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('parent::BEGIN@25 (169 microseconds, 0.20%)')" onmouseout="c()" onclick="zoom(this)">
+<title>parent::BEGIN@25 (169 microseconds, 0.20%)</title><a xlink:href="parent-pm-17-line.html#25" target="_top"><rect x="138.0" y="97" width="2.3" height="15.0" fill="rgb(240,149,38)" rx="2" ry="2" />
+<text text-anchor="" x="140.95" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::import (48 microseconds, 0.06%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::import (48 microseconds, 0.06%)</title><a xlink:href="vars-pm-8-line.html#10" target="_top"><rect x="795.0" y="81" width="0.7" height="15.0" fill="rgb(238,101,36)" rx="2" ry="2" />
+<text text-anchor="" x="798.00" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::CORE:regcomp (132 microseconds, 0.15%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::CORE:regcomp (132 microseconds, 0.15%)</title><a xlink:href="strict-pm-2-line.html#strict__CORE_regcomp" target="_top"><rect x="145.7" y="113" width="1.9" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="148.75" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (25 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (25 microseconds, 0.03%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="80.5" y="97" width="0.3" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="83.45" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (12 microseconds, 0.01%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (12 microseconds, 0.01%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="796.0" y="65" width="0.1" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="798.98" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('lib::import (118 microseconds, 0.14%)')" onmouseout="c()" onclick="zoom(this)">
+<title>lib::import (118 microseconds, 0.14%)</title><a xlink:href="lib-pm-13-line.html#18" target="_top"><rect x="1141.0" y="113" width="1.6" height="15.0" fill="rgb(238,129,36)" rx="2" ry="2" />
+<text text-anchor="" x="1143.98" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::unimport (101 microseconds, 0.12%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::unimport (101 microseconds, 0.12%)</title><a xlink:href="strict-pm-2-line.html#47" target="_top"><rect x="138.9" y="81" width="1.4" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="141.89" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Child::BEGIN@2 (50 microseconds, 0.06%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Child::BEGIN@2 (50 microseconds, 0.06%)</title><a xlink:href="lib-Child-pm-16-line.html#2" target="_top"><rect x="80.1" y="113" width="0.7" height="15.0" fill="rgb(240,119,39)" rx="2" ry="2" />
+<text text-anchor="" x="83.12" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (22 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (22 microseconds, 0.03%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="770.6" y="65" width="0.3" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="773.65" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@8 (967 microseconds, 1.13%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@8 (967 microseconds, 1.13%)</title><a xlink:href="Carp-pm-5-line.html#8" target="_top"><rect x="654.6" y="97" width="13.3" height="15.0" fill="rgb(230,109,28)" rx="2" ry="2" />
+<text text-anchor="" x="657.57" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (29 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (29 microseconds, 0.03%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="939.7" y="65" width="0.4" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="942.69" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (97 microseconds, 0.11%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (97 microseconds, 0.11%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="140.3" y="81" width="1.3" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="143.28" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (40 microseconds, 0.05%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (40 microseconds, 0.05%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="650.0" y="65" width="0.5" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="653.00" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('main::BEGIN@7 (89 microseconds, 0.10%)')" onmouseout="c()" onclick="zoom(this)">
+<title>main::BEGIN@7 (89 microseconds, 0.10%)</title><a xlink:href="Klass-pl-1-line.html#7" target="_top"><rect x="1142.6" y="129" width="1.2" height="15.0" fill="rgb(232,83,29)" rx="2" ry="2" />
+<text text-anchor="" x="1145.60" y="139.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (16 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (16 microseconds, 0.02%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="24.0" y="81" width="0.2" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="27.00" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Cwd::BEGIN@171 (63 microseconds, 0.07%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Cwd::BEGIN@171 (63 microseconds, 0.07%)</title><a xlink:href="Cwd-pm-7-line.html#171" target="_top"><rect x="770.9" y="97" width="0.9" height="15.0" fill="rgb(238,115,36)" rx="2" ry="2" />
+<text text-anchor="" x="773.94" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@7 (31 microseconds, 0.04%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@7 (31 microseconds, 0.04%)</title><a xlink:href="Carp-pm-5-line.html#7" target="_top"><rect x="654.1" y="97" width="0.5" height="15.0" fill="rgb(232,109,29)" rx="2" ry="2" />
+<text text-anchor="" x="657.14" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@441 (33 microseconds, 0.04%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@441 (33 microseconds, 0.04%)</title><a xlink:href="Carp-pm-5-line.html#441" target="_top"><rect x="651.5" y="97" width="0.4" height="15.0" fill="rgb(227,109,25)" rx="2" ry="2" />
+<text text-anchor="" x="654.48" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::CORE:regcomp (76 microseconds, 0.09%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::CORE:regcomp (76 microseconds, 0.09%)</title><a xlink:href="warnings-pm-3-line.html#warnings__CORE_regcomp" target="_top"><rect x="306.2" y="113" width="1.0" height="15.0" fill="rgb(238,93,36)" rx="2" ry="2" />
+<text text-anchor="" x="309.19" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::unimport (21 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::unimport (21 microseconds, 0.02%)</title><a xlink:href="strict-pm-2-line.html#47" target="_top"><rect x="795.9" y="81" width="0.2" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="798.86" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('main::BEGIN@2 (2,962 microseconds, 3.45%)')" onmouseout="c()" onclick="zoom(this)">
+<title>main::BEGIN@2 (2,962 microseconds, 3.45%)</title><a xlink:href="Klass-pl-1-line.html#2" target="_top"><rect x="25.0" y="129" width="40.7" height="15.0" fill="rgb(240,83,39)" rx="2" ry="2" />
+<text text-anchor="" x="27.96" y="139.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >mai..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Basename::CORE:match (13 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Basename::CORE:match (13 microseconds, 0.02%)</title><a xlink:href="File-Basename-pm-10-line.html#File__Basename__CORE_match" target="_top"><rect x="942.1" y="81" width="0.2" height="15.0" fill="rgb(242,199,41)" rx="2" ry="2" />
+<text text-anchor="" x="945.08" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Child::BEGIN@5 (4,623 microseconds, 5.39%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Child::BEGIN@5 (4,623 microseconds, 5.39%)</title><a xlink:href="lib-Child-pm-16-line.html#5" target="_top"><rect x="81.6" y="113" width="63.6" height="15.0" fill="rgb(235,119,33)" rx="2" ry="2" />
+<text text-anchor="" x="84.61" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Child:..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Carp::BEGIN@3 (57 microseconds, 0.07%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Carp::BEGIN@3 (57 microseconds, 0.07%)</title><a xlink:href="Carp-pm-5-line.html#3" target="_top"><rect x="647.9" y="97" width="0.8" height="15.0" fill="rgb(239,109,37)" rx="2" ry="2" />
+<text text-anchor="" x="650.89" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('File::Spec::Unix::BEGIN@3 (192 microseconds, 0.22%)')" onmouseout="c()" onclick="zoom(this)">
+<title>File::Spec::Unix::BEGIN@3 (192 microseconds, 0.22%)</title><a xlink:href="File-Spec-Unix-pm-12-line.html#3" target="_top"><rect x="1028.0" y="97" width="2.6" height="15.0" fill="rgb(239,199,37)" rx="2" ry="2" />
+<text text-anchor="" x="1030.98" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::import (14 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::import (14 microseconds, 0.02%)</title><a xlink:href="strict-pm-2-line.html#42" target="_top"><rect x="794.8" y="65" width="0.2" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="797.81" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('warnings::import (18 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>warnings::import (18 microseconds, 0.02%)</title><a xlink:href="warnings-pm-3-line.html#406" target="_top"><rect x="1131.0" y="81" width="0.2" height="15.0" fill="rgb(238,93,36)" rx="2" ry="2" />
+<text text-anchor="" x="1133.96" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('all (85,750 microseconds, 100%)')" onmouseout="c()" onclick="zoom(this)">
+<title>all (85,750 microseconds, 100%)</title><rect x="10.0" y="145" width="1180.0" height="15.0" fill="rgb(255,230,55)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="155.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s('parent::BEGIN@3 (176 microseconds, 0.21%)')" onmouseout="c()" onclick="zoom(this)">
+<title>parent::BEGIN@3 (176 microseconds, 0.21%)</title><a xlink:href="parent-pm-17-line.html#3" target="_top"><rect x="141.6" y="97" width="2.4" height="15.0" fill="rgb(239,149,37)" rx="2" ry="2" />
+<text text-anchor="" x="144.61" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('main::BEGIN@6 (8,026 microseconds, 9.36%)')" onmouseout="c()" onclick="zoom(this)">
+<title>main::BEGIN@6 (8,026 microseconds, 9.36%)</title><a xlink:href="Klass-pl-1-line.html#6" target="_top"><rect x="1032.2" y="129" width="110.4" height="15.0" fill="rgb(233,83,31)" rx="2" ry="2" />
+<text text-anchor="" x="1035.15" y="139.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >main::BEGIN@6</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('Config::BEGIN@11 (165 microseconds, 0.19%)')" onmouseout="c()" onclick="zoom(this)">
+<title>Config::BEGIN@11 (165 microseconds, 0.19%)</title><a xlink:href="Config-pm-14-line.html#11" target="_top"><rect x="1131.2" y="97" width="2.3" height="15.0" fill="rgb(231,162,28)" rx="2" ry="2" />
+<text text-anchor="" x="1134.21" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('parent::import (87 microseconds, 0.10%)')" onmouseout="c()" onclick="zoom(this)">
+<title>parent::import (87 microseconds, 0.10%)</title><a xlink:href="parent-pm-17-line.html#6" target="_top"><rect x="144.0" y="97" width="1.2" height="15.0" fill="rgb(238,149,36)" rx="2" ry="2" />
+<text text-anchor="" x="147.03" y="107.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('vars::CORE:match (21 microseconds, 0.02%)')" onmouseout="c()" onclick="zoom(this)">
+<title>vars::CORE:match (21 microseconds, 0.02%)</title><a xlink:href="vars-pm-8-line.html#vars__CORE_match" target="_top"><rect x="1026.9" y="65" width="0.3" height="15.0" fill="rgb(242,101,41)" rx="2" ry="2" />
+<text text-anchor="" x="1029.94" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::unimport (928 microseconds, 1.08%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::unimport (928 microseconds, 1.08%)</title><a xlink:href="strict-pm-2-line.html#47" target="_top"><rect x="655.1" y="81" width="12.8" height="15.0" fill="rgb(238,140,36)" rx="2" ry="2" />
+<text text-anchor="" x="658.10" y="91.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('FindBin::BEGIN@84 (3,936 microseconds, 4.59%)')" onmouseout="c()" onclick="zoom(this)">
+<title>FindBin::BEGIN@84 (3,936 microseconds, 4.59%)</title><a xlink:href="FindBin-pm-4-line.html#84" target="_top"><rect x="888.6" y="113" width="54.2" height="15.0" fill="rgb(247,193,46)" rx="2" ry="2" />
+<text text-anchor="" x="891.65" y="123.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >FindB..</text>
+</a>
+</g>
+<g class="func_g" onmouseover="s('strict::bits (24 microseconds, 0.03%)')" onmouseout="c()" onclick="zoom(this)">
+<title>strict::bits (24 microseconds, 0.03%)</title><a xlink:href="strict-pm-2-line.html#23" target="_top"><rect x="647.6" y="65" width="0.3" height="15.0" fill="rgb(233,140,31)" rx="2" ry="2" />
+<text text-anchor="" x="650.56" y="75.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</a>
+</g>
+</svg>

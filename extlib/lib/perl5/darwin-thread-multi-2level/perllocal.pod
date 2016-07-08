@@ -1296,3 +1296,69 @@ C<EXE_FILES: >
 
 =back
 
+=head2 Wed Jul  6 16:42:40 2016: C<Module> L<JSON::MaybeXS|JSON::MaybeXS>
+
+=over 4
+
+=item *
+
+C<installed into: /Users/doi_kenji/Documents/perl/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.003005>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jul  6 16:42:47 2016: C<Module> L<Devel::NYTProf|Devel::NYTProf>
+
+=over 4
+
+=item *
+
+C<installed into: /Users/doi_kenji/Documents/perl/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 6.03>
+
+=item *
+
+C<EXE_FILES: bin/flamegraph.pl bin/nytprofcalls bin/nytprofcg bin/nytprofcsv bin/nytprofhtml bin/nytprofmerge bin/nytprofpf>
+
+=back
+
+=head2 Fri Jul  8 16:13:24 2016: C<Module> L<TokyoCabinet|TokyoCabinet>
+
+=over 4
+
+=item *
+
+C<installed into: /Users/doi_kenji/Documents/perl/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.34>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

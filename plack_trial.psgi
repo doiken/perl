@@ -33,6 +33,9 @@ builder {
 
                 my $req = Plack::Request->new( $env );
 
+                if ($req->query_string eq 'die') {
+                    print STDERR 'Errrrror', "\n";
+                }
                 $res->[2]  = [ $req->query_string . ':' . $env->{'QUERY_STRING'} . "Good Morning!"];
                 return $res;
             };

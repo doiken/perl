@@ -1,0 +1,22 @@
+=head2 Fri Jul  8 15:19:43 2016: C<Module> L<TokyoCabinet|TokyoCabinet>
+
+=over 4
+
+=item *
+
+C<installed into: ../extlib//lib/perl5/site_perl>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.34>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

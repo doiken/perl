@@ -1,0 +1,311 @@
+digraph {
+graph [overlap=false]
+subgraph cluster_Klass {
+	label="Klass";
+	"Klass::age";
+	"Klass::CORE:print";
+	"Klass::says";
+	"Klass::new";
+}
+subgraph cluster_XSLoader {
+	label="XSLoader";
+	"XSLoader::load";
+}
+subgraph cluster_warnings {
+	label="warnings";
+	"warnings::_mkMask";
+	"warnings::unimport";
+	"warnings::CORE:match";
+	"warnings::_bits";
+	"warnings::register_categories";
+	"warnings::CORE:regcomp";
+	"warnings::import";
+}
+subgraph cluster_Cwd {
+	label="Cwd";
+	"Cwd::CORE:fteexec";
+	"Cwd::abs_path";
+	"Cwd::BEGIN@170";
+	"Cwd::BEGIN@823";
+	"Cwd::BEGIN@172";
+	"Cwd::BEGIN@209";
+	"Cwd::BEGIN@171";
+	"Cwd::CORE:regcomp";
+}
+subgraph cluster_File_Basename {
+	label="File::Basename";
+	"File::Basename::BEGIN@51";
+	"File::Basename::BEGIN@371";
+	"File::Basename::BEGIN@52";
+	"File::Basename::fileparse_set_fstype";
+	"File::Basename::CORE:match";
+	"File::Basename::CORE:regcomp";
+	"File::Basename::fileparse";
+	"File::Basename::BEGIN@50";
+	"File::Basename::BEGIN@42";
+}
+subgraph cluster_strict {
+	label="strict";
+	"strict::CORE:match";
+	"strict::import";
+	"strict::unimport";
+	"strict::bits";
+	"strict::CORE:regcomp";
+}
+subgraph cluster_vars {
+	label="vars";
+	"vars::BEGIN@8";
+	"vars::BEGIN@3";
+	"vars::CORE:match";
+	"vars::import";
+	"vars::BEGIN@7";
+}
+subgraph cluster_Child {
+	label="Child";
+	"Child::BEGIN@5";
+	"Child::CORE:print";
+	"Child::BEGIN@3";
+	"Child::BEGIN@2";
+	"Child::says";
+}
+subgraph cluster_File_Spec_Unix {
+	label="File::Spec::Unix";
+	"File::Spec::Unix::file_name_is_absolute";
+	"File::Spec::Unix::BEGIN@3";
+	"File::Spec::Unix::CORE:match";
+	"File::Spec::Unix::BEGIN@149";
+	"File::Spec::Unix::BEGIN@4";
+}
+subgraph cluster_warnings_register {
+	label="warnings::register";
+	"warnings::register::import";
+}
+subgraph cluster_FindBin {
+	label="FindBin";
+	"FindBin::BEGIN@80";
+	"FindBin::BEGIN@166";
+	"FindBin::BEGIN@85";
+	"FindBin::BEGIN@83";
+	"FindBin::BEGIN@84";
+	"FindBin::init";
+	"FindBin::CORE:readlink";
+	"FindBin::CORE:ftfile";
+}
+subgraph cluster_Config {
+	label="Config";
+	"Config::BEGIN@10";
+	"Config::BEGIN@9";
+	"Config::import";
+	"Config::BEGIN@11";
+	"Config::FETCH";
+	"Config::BEGIN@47";
+	"Config::TIEHASH";
+}
+subgraph cluster_Carp {
+	label="Carp";
+	"Carp::BEGIN@434";
+	"Carp::BEGIN@3";
+	"Carp::BEGIN@67";
+	"Carp::BEGIN@105";
+	"Carp::BEGIN@17";
+	"Carp::BEGIN@4";
+	"Carp::BEGIN@433";
+	"Carp::BEGIN@8";
+	"Carp::BEGIN@5";
+	"Carp::BEGIN@441";
+	"Carp::BEGIN@7";
+	"Carp::BEGIN@18";
+	"Carp::BEGIN@448";
+}
+subgraph cluster_version {
+	label="version";
+	"version::(bool";
+	"version::(cmp";
+}
+subgraph cluster_parent {
+	label="parent";
+	"parent::CORE:subst";
+	"parent::import";
+	"parent::BEGIN@3";
+	"parent::BEGIN@2";
+	"parent::BEGIN@25";
+}
+subgraph cluster_main {
+	label="main";
+	"main::BEGIN@14";
+	"main::RUNTIME";
+	"main::BEGIN@5";
+	"main::BEGIN@3";
+	"main::BEGIN@1";
+	"main::BEGIN@2.1";
+	"main::BEGIN@2";
+	"main::BEGIN@7";
+	"main::BEGIN@22";
+	"main::BEGIN@6";
+}
+subgraph cluster_File_Spec {
+	label="File::Spec";
+	"File::Spec::BEGIN@3";
+	"File::Spec::BEGIN@4";
+}
+subgraph cluster_Exporter {
+	label="Exporter";
+	"Exporter::CORE:match";
+	"Exporter::import";
+	"Exporter::CORE:subst";
+}
+subgraph cluster_lib {
+	label="lib";
+	"lib::CORE:ftdir";
+	"lib::CORE:match";
+	"lib::BEGIN@8";
+	"lib::import";
+	"lib::CORE:ftis";
+	"lib::_get_dirs";
+	"lib::BEGIN@6";
+}
+"main::BEGIN@14" -> "main::BEGIN@1";
+"FindBin::BEGIN@83" -> "Cwd::BEGIN@170";
+"Cwd::BEGIN@172" -> "vars::BEGIN@7";
+"main::RUNTIME" -> "main::BEGIN@7";
+"main::BEGIN@14" -> "main::BEGIN@2.1";
+"FindBin::init" -> "FindBin::CORE:readlink";
+"FindBin::BEGIN@83" -> "Cwd::BEGIN@823";
+"Carp::BEGIN@441" -> "warnings::unimport";
+"Carp::BEGIN@434" -> "warnings::unimport";
+"Child::BEGIN@5" -> "parent::BEGIN@25";
+"Cwd::BEGIN@172" -> "vars::BEGIN@8";
+"FindBin::BEGIN@83" -> "Cwd::CORE:fteexec";
+"main::RUNTIME" -> "main::BEGIN@22";
+"Child::BEGIN@5" -> "parent::import";
+"main::RUNTIME" -> "main::BEGIN@6";
+"FindBin::init" -> "File::Spec::Unix::file_name_is_absolute";
+"main::RUNTIME" -> "Klass::new";
+"FindBin::BEGIN@84" -> "File::Basename::BEGIN@42";
+"main::BEGIN@2" -> "strict::CORE:match";
+"Carp::BEGIN@4" -> "strict::import";
+"File::Basename::BEGIN@50" -> "strict::import";
+"lib::BEGIN@8" -> "strict::import";
+"main::BEGIN@2" -> "strict::import";
+"Cwd::BEGIN@170" -> "strict::import";
+"main::BEGIN@1" -> "strict::import";
+"Child::BEGIN@2" -> "strict::import";
+"File::Spec::BEGIN@3" -> "strict::import";
+"vars::BEGIN@8" -> "strict::import";
+"parent::BEGIN@2" -> "strict::import";
+"File::Spec::Unix::BEGIN@3" -> "strict::import";
+"Config::BEGIN@9" -> "strict::import";
+"main::BEGIN@5" -> "FindBin::BEGIN@84";
+"main::BEGIN@3" -> "warnings::CORE:regcomp";
+"main::BEGIN@6" -> "lib::import";
+"main::BEGIN@7" -> "lib::import";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@441";
+"main::BEGIN@6" -> "lib::BEGIN@6";
+"lib::import" -> "lib::CORE:ftis";
+"File::Basename::fileparse" -> "File::Basename::CORE:match";
+"File::Basename::fileparse_set_fstype" -> "File::Basename::CORE:match";
+"lib::BEGIN@6" -> "Config::BEGIN@47";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@433";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@8";
+"Carp::BEGIN@8" -> "strict::unimport";
+"Carp::BEGIN@433" -> "strict::unimport";
+"Config::BEGIN@47" -> "strict::unimport";
+"Carp::BEGIN@67" -> "strict::unimport";
+"Cwd::BEGIN@823" -> "strict::unimport";
+"parent::BEGIN@25" -> "strict::unimport";
+"Carp::BEGIN@448" -> "strict::unimport";
+"Carp::BEGIN@18" -> "strict::unimport";
+"File::Spec::Unix::BEGIN@149" -> "strict::unimport";
+"Exporter::import" -> "Exporter::CORE:match";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@67";
+"Cwd::BEGIN@172" -> "vars::BEGIN@3";
+"File::Basename::BEGIN@52" -> "warnings::import";
+"Config::BEGIN@10" -> "warnings::import";
+"main::BEGIN@3" -> "warnings::import";
+"Child::BEGIN@3" -> "warnings::import";
+"main::BEGIN@2.1" -> "warnings::import";
+"Carp::BEGIN@5" -> "warnings::import";
+"main::RUNTIME" -> "main::BEGIN@3";
+"FindBin::BEGIN@83" -> "Cwd::BEGIN@172";
+"FindBin::BEGIN@84" -> "File::Basename::BEGIN@371";
+"FindBin::BEGIN@85" -> "File::Spec::Unix::BEGIN@3";
+"Child::says" -> "Child::CORE:print";
+"warnings::register_categories" -> "warnings::_mkMask";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@5";
+"FindBin::BEGIN@83" -> "Cwd::BEGIN@209";
+"File::Spec::Unix::file_name_is_absolute" -> "File::Spec::Unix::CORE:match";
+"FindBin::BEGIN@84" -> "File::Basename::BEGIN@50";
+"main::RUNTIME" -> "main::BEGIN@14";
+"Klass::says" -> "Klass::CORE:print";
+"Klass::age" -> "Klass::CORE:print";
+"FindBin::BEGIN@85" -> "File::Spec::BEGIN@4";
+"lib::BEGIN@6" -> "Config::BEGIN@10";
+"main::BEGIN@5" -> "FindBin::BEGIN@83";
+"FindBin::BEGIN@85" -> "File::Spec::Unix::BEGIN@149";
+"Klass::says" -> "Klass::age";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@18";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@17";
+"FindBin::BEGIN@83" -> "XSLoader::load";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@4";
+"lib::BEGIN@6" -> "Config::BEGIN@11";
+"main::BEGIN@22" -> "Child::BEGIN@5";
+"parent::import" -> "parent::CORE:subst";
+"Exporter::import" -> "Exporter::CORE:subst";
+"main::RUNTIME" -> "main::BEGIN@2";
+"FindBin::init" -> "FindBin::CORE:ftfile";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@448";
+"main::BEGIN@22" -> "Child::BEGIN@2";
+"FindBin::BEGIN@84" -> "File::Basename::BEGIN@52";
+"FindBin::BEGIN@85" -> "File::Spec::Unix::BEGIN@4";
+"lib::import" -> "lib::CORE:match";
+"FindBin::BEGIN@84" -> "File::Basename::fileparse_set_fstype";
+"main::RUNTIME" -> "Klass::says";
+"Child::says" -> "Klass::says";
+"main::BEGIN@6" -> "Config::FETCH";
+"main::BEGIN@5" -> "FindBin::BEGIN@85";
+"main::BEGIN@6" -> "lib::BEGIN@8";
+"main::BEGIN@5" -> "FindBin::BEGIN@166";
+"lib::BEGIN@6" -> "Config::import";
+"vars::import" -> "vars::CORE:match";
+"FindBin::BEGIN@85" -> "File::Spec::BEGIN@3";
+"warnings::import" -> "warnings::_bits";
+"FindBin::init" -> "Cwd::abs_path";
+"lib::BEGIN@6" -> "Config::BEGIN@9";
+"Cwd::BEGIN@172" -> "vars::import";
+"File::Spec::BEGIN@4" -> "vars::import";
+"Config::BEGIN@11" -> "vars::import";
+"File::Spec::Unix::BEGIN@4" -> "vars::import";
+"parent::BEGIN@3" -> "vars::import";
+"main::RUNTIME" -> "Child::says";
+"FindBin::init" -> "File::Basename::fileparse";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@434";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@3";
+"FindBin::BEGIN@84" -> "Exporter::import";
+"FindBin::BEGIN@83" -> "Exporter::import";
+"Cwd::BEGIN@171" -> "Exporter::import";
+"FindBin::BEGIN@80" -> "Exporter::import";
+"main::BEGIN@5" -> "Exporter::import";
+"lib::BEGIN@6" -> "Config::TIEHASH";
+"strict::import" -> "strict::bits";
+"strict::unimport" -> "strict::bits";
+"Child::BEGIN@5" -> "parent::BEGIN@2";
+"FindBin::BEGIN@83" -> "Cwd::CORE:regcomp";
+"lib::BEGIN@6" -> "version::(cmp";
+"warnings::register::import" -> "warnings::register_categories";
+"main::BEGIN@5" -> "FindBin::BEGIN@80";
+"main::RUNTIME" -> "main::BEGIN@5";
+"lib::BEGIN@6" -> "version::(bool";
+"FindBin::BEGIN@83" -> "Cwd::BEGIN@171";
+"vars::BEGIN@7" -> "warnings::register::import";
+"FindBin::BEGIN@84" -> "File::Basename::BEGIN@51";
+"FindBin::BEGIN@166" -> "FindBin::init";
+"main::BEGIN@2" -> "strict::CORE:regcomp";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@7";
+"main::BEGIN@22" -> "Child::BEGIN@3";
+"FindBin::BEGIN@80" -> "Carp::BEGIN@105";
+"File::Basename::fileparse_set_fstype" -> "File::Basename::CORE:regcomp";
+"main::BEGIN@3" -> "warnings::CORE:match";
+"lib::import" -> "lib::_get_dirs";
+"Child::BEGIN@5" -> "parent::BEGIN@3";
+"lib::import" -> "lib::CORE:ftdir";
+}

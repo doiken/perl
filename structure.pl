@@ -66,3 +66,42 @@ package hash_trial;
     # print %hash_direct;
 }
 
+package signal_trial;
+{
+    print "\n-- signal_trial --\n";
+
+    my $str = 'string';
+    print q(single quote $str), "\n";
+    print qq(double quote $str), "\n";
+    print qw(quote word $str), "\n";
+
+}
+
+package regex_trial;
+{
+    print "\n-- regex_trial --\n";
+
+#    my $pat = "\\.htm\$";
+#    $string =~ /$pat/i;
+    print 'slashed way matched .txt', "\n" if 'hoge.txt' =~ /\.txt$/;
+    print 'qr way matched .txt', "\n" if 'hoge.txt' =~ qr/\.txt$/;
+
+#    my $regexp = qr/\.htm$/i; # \ の使い方に注意
+#    $string =~ $regexp;
+#    print 'matched', "\n";
+
+}
+
+package data_trial;
+{
+    print "\n-- data_trial --\n";
+    while (<DATA>) {
+        print $_;
+    }
+}
+__DATA__
+data_1
+data_2
+data_3
+
+
