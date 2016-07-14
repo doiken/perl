@@ -1362,3 +1362,25 @@ C<EXE_FILES: >
 
 =back
 
+=head2 Wed Jul 13 18:45:19 2016: C<Module> L<Parallel::ForkManager|Parallel::ForkManager>
+
+=over 4
+
+=item *
+
+C<installed into: /Users/doi_kenji/Documents/perl/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.19>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

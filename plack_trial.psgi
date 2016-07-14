@@ -8,6 +8,7 @@ use lib './extlib/lib/perl5';
 
 use Plack::Builder;
 use Plack::Request;
+use Plack::Response;
 
 # http://dqn.sakusakutto.jp/2011/08/plackplackhello_world.html
 # プロジェクトコンフィギュレーションで -I移行を入力し、working directoryをプロジェクトルートに
@@ -17,29 +18,30 @@ use Plack::Request;
 my $app = sub {
     my $env = shift;
     print $env;
-    return [
-        200,
-        [ 'Content-Type' => 'text/plain' ],
-        [ "Hello World2" ],
-    ];
+
+    my $res = Plack::Response->new(200);
+    $res->content_type('application/json; charset=utf-8');
+    $res->body(q|{content: "OK!"}|);
+
+    return $res->finalize;
 };
 
 builder {
-    enable sub {
-            my $app = shift;
-            sub {
-                my $env = shift;
-                my $res = $app->($env);
-
-                my $req = Plack::Request->new( $env );
-
-                if ($req->query_string eq 'die') {
-                    print STDERR 'Errrrror', "\n";
-                }
-                $res->[2]  = [ $req->query_string . ':' . $env->{'QUERY_STRING'} . "Good Morning!"];
-                return $res;
-            };
-        };
+#    enable sub {
+#            my $app = shift;
+#            sub {
+#                my $env = shift;
+#                my $res = $app->($env);
+#
+#                my $req = Plack::Request->new( $env );
+#
+#                if ($req->query_string eq 'die') {
+#                    print STDERR 'Errrrror', "\n";
+#                }
+#                $res->[2]  = [ $req->query_string . ':' . $env->{'QUERY_STRING'} . "Good Morning!"];
+#                return $res;
+#            };
+#        };
     $app;
 };
 #return $app;
