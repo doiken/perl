@@ -1,1 +1,0 @@
-{"version":"0.1004","provides":{"Plack::Server::Coro":{"version":"0.1002","file":"lib/Plack/Server/Coro.pm"},"Corona::Server":{"file":"lib/Corona/Server.pm"},"Corona":{"file":"lib/Corona.pm","version":"0.1004"},"Plack::Handler::Corona":{"file":"lib/Plack/Handler/Corona.pm"}},"dist":"Corona-0.1004","target":"Corona","name":"Corona","pathname":"M/MI/MIYAGAWA/Corona-0.1004.tar.gz"}

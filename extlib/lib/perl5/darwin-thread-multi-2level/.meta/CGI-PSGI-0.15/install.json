@@ -1,1 +1,0 @@
-{"name":"CGI::PSGI","pathname":"M/MI/MIYAGAWA/CGI-PSGI-0.15.tar.gz","dist":"CGI-PSGI-0.15","provides":{"CGI::PSGI":{"version":"0.15","file":"lib/CGI/PSGI.pm"}},"target":"CGI::PSGI","version":"0.15"}
