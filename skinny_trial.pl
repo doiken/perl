@@ -3,7 +3,6 @@ use strict;
 use warnings;
 
 use lib './lib';
-use lib './extlib/lib/perl5';
 use Skinny::Model;
 
 ##

@@ -9,10 +9,10 @@ use lib $FindBin::Bin . '/lib';
 ## NYTProf
 ##
 # cpanm -fl ./extlib  --no-man-pages -n  Devel::NYTProf
-# perl -d:NYTProf -I/Users/doi_kenji/Documents/perl/extlib/lib/perl5/darwin-thread-multi-2level ...
+# perl -d:NYTProf -I~/Documents/perl/extlib/lib/perl5/darwin-thread-multi-2level ...
 # nytprofhtml -f nytprof.out -o nytprof_report
 # open nytprof_report/index.html
-use lib $FindBin::Bin . '/extlib/lib/perl5/darwin-thread-multi-2level';
+use lib $FindBin::Bin . '/local/lib/perl5/darwin-thread-multi-2level';
 
 
 ##

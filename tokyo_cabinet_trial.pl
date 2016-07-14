@@ -2,8 +2,6 @@
 use strict;
 use warnings;
 
-use TokyoCabinet;
-
 ##
 ## インストール手順
 ##
@@ -14,6 +12,9 @@ use TokyoCabinet;
 # eval $(perl -Mlocal::lib=./extlib) # install pathの正しい設定に必要
 # perl Makefile.PL
 # make && make install
+use local::lib 'extlib';
+
+use TokyoCabinet;
 
 # create the object
 my $hdb = TokyoCabinet::HDB->new();

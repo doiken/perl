@@ -4,15 +4,13 @@ use strict;
 use warnings;
 
 use lib './lib';
-use lib './extlib/lib/perl5';
 
 use Plack::Builder;
 use Plack::Request;
 use Plack::Response;
 
 # http://dqn.sakusakutto.jp/2011/08/plackplackhello_world.html
-# プロジェクトコンフィギュレーションで -I移行を入力し、working directoryをプロジェクトルートに
-# perl -I lib/ -I extlib/lib/perl5/ ./extlib/bin/plackup
+# perl -Mlocal::lib=~/Documents/perl/local ./local/bin/plackup plack_trial.psgi
 # curl http://localhost:5000/
 
 my $app = sub {
