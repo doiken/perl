@@ -12,25 +12,25 @@ package fork_manager_trial {
 
     my $pm = Parallel::ForkManager->new($max_procs);
 
-    # Setup a callback for when a child finishes up so we can
-    # get it's exit code
-    $pm->run_on_finish( sub {
-            my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $datastructure) = @_;
-            print "child number was $datastructure->{child_number} \n";
-            print "** $ident just got out of the pool ".
-                    "with PID $pid and exit code: $exit_code\n";
-        });
-
-    $pm->run_on_start( sub {
-            my ($pid, $ident)=@_;
-            print "** $ident started, pid: $pid\n";
-        });
-
-    $pm->run_on_wait( sub {
-            print "** Have to wait for one children ...\n"
-        },
-        0.5
-    );
+#    # Setup a callback for when a child finishes up so we can
+#    # get it's exit code
+#    $pm->run_on_finish( sub {
+#        my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $datastructure) = @_;
+#        print "child number was $datastructure->{child_number} \n";
+#        print "** $ident just got out of the pool ".
+#                "with PID $pid and exit code: $exit_code\n";
+#    });
+#
+#    $pm->run_on_start( sub {
+#        my ($pid, $ident)=@_;
+#        print "** $ident started, pid: $pid\n";
+#    });
+#
+#    $pm->run_on_wait( sub {
+#            print "** Have to wait for one children ...\n"
+#        },
+#        0.5
+#    );
 
     NAMES:
     foreach my $child ( 0 .. $#names ) {
@@ -38,11 +38,11 @@ package fork_manager_trial {
 
         # This code is the child process
         print "This is $names[$child], Child number $child\n";
-        sleep ( 2 * $child );
+        sleep ( $child );
         print "$names[$child], Child $child is about to get out...\n";
         sleep 1;
 
-        $pm->finish(0, {child_number => $child}); # pass an exit code to finish
+        $pm->finish(0); # pass an exit code to finish
     }
 
     print "Waiting for Children...\n";

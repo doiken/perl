@@ -10,5 +10,6 @@ requires 'Data::MessagePack';
 requires 'Data::MessagePack::Stream';
 requires 'Text::Ux';
 requires 'Parallel::ForkManager';
+requires 'autovivification';
 
 # requires 'TokyoCabinet';

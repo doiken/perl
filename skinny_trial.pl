@@ -29,6 +29,7 @@ my $row = $db->create('webmemo',
 $row->update({title => 'test' . localtime});
 
 $row = $db->single('webmemo', { title => 'test'});
+$row->
 print $row->id, "\n";
 print $row->title, "\n";
 print $row->body, "\n";

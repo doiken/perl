@@ -2807,6 +2807,18 @@ DISTRIBUTIONS
       Test::More 0.47
       base 0
       perl 5.005
+  autovivification-0.16
+    pathname: V/VP/VPIT/autovivification-0.16.tar.gz
+    provides:
+      autovivification 0.16
+    requirements:
+      Config 0
+      Exporter 0
+      ExtUtils::MakeMaker 0
+      POSIX 0
+      Test::More 0
+      XSLoader 0
+      perl 5.008003
   common-sense-3.74
     pathname: M/ML/MLEHMANN/common-sense-3.74.tar.gz
     provides:

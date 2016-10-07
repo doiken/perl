@@ -5,6 +5,9 @@ use warnings;
 ##
 ## インストール手順
 ##
+# @centos
+# yum install tokyocabinet
+# @mac
 # brew install tokyo-cabinet
 # wget http://fallabs.com/tokyocabinet/perlpkg/tokyocabinet-perl-1.34.tar.gz
 # tar xzf tokyocabinet-perl-1.34.tar.gz

@@ -6,6 +6,11 @@ use lib './lib';
 use Encode;
 use JSON::PP;
 
+# わかりやすい記事: http://monmon.hateblo.jp/entry/20111024/1319473613
+# Perl外部に存在する"バイナリ" と Perl内部に存在する"Perl文字列"
+# "バイナリ"を○○コードとみなして、"Perl文字列"に変換するのがEncodeモジュール
+# use utf8;するとソースコードの文字は"Perl文字列"になる
+
 # http://tech.voyagegroup.com/archives/465806.html
 package utf8_trial_with_utf8 {
     use utf8;
