@@ -5,7 +5,35 @@ use warnings;
 #map { print $_ . ":"; $_ => 1 } (1 => 1, 2 => 2);
 #map { print $_ . ":"; $_ => 1 } (1, @{[3, 4]});
 
+my ($is_black, $domains) = "" =~ /^(!?)(.+)$/;
+print 1 if length $domains;
+
+my $arr = {};
+$arr->{foo}->{bar};
+use Data::Dumper;
+print Dumper $arr; # NG
+
+package Piyo {
+    my @pattern = ();
+    my $huga = {aa => 1};
+    push @pattern, keys %$huga;
+    use Data::Dumper;
+    print Dumper @pattern;
+    my %a = ();
+    my $bar =  $a{foo};
+    print 111 unless $bar;
+    print $bar // 0;
+    print "\n-- " . __PACKAGE__ . " --\n";
+    my (@logs, %warnings);
+    my $hoge = +{
+        logs     => \@logs,
+        warnings => \%warnings,
+    };
+    print 'hoge' x 10, "\n" if @{$hoge->{logs}};
+    print 'huga' x 10, "\n" if %{$hoge->{warnings}};
+}
 package Arr {
+    print "\n-- " . __PACKAGE__ . " --\n";
     use Mouse;
     use namespace::autoclean;
     has list => (
@@ -14,15 +42,6 @@ package Arr {
     );
     __PACKAGE__->meta->make_immutable;
 }
-
-
-my @hoge = map { @{$_->list} } {[
-    Arr->new(list => [1, 2]),
-    Arr->new(list => [3, 4]),
-]};
-
-use Data::Dumper;
-print Dumper @hoge;
 
 # inline展開の確認
 # perl -MO=Deparse xxx.pl
@@ -42,6 +61,13 @@ package constant_trial;
         *HOGE = sub () { "foo" };
         print_hoge;
     }
+}
+
+package array_ref;
+{
+    print "\n-- ".__PACKAGE__." --\n";
+    my $foo = [1, 2, 3];
+    print @$foo[2];
 }
 
 package smart_style_trial;
@@ -204,6 +230,16 @@ package unless_trial;
     print '1 && ""', "\n" unless 1 && '';
     print '1 && 1', "\n" unless 1 && 1;
     print '0 || 1', "\n" unless 0 || 1;
+}
+
+package list_util;
+{
+    print "\n-- " . __PACKAGE__ . " --\n";
+    use List::MoreUtils qw(part);
+    use Data::Dumper;
+    my ($left, $right) = part {$_ > 0} (1, -2, 3, -4);
+    print Dumper $left;
+    print Dumper $right;
 }
 
 package data_trial;

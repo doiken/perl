@@ -4,6 +4,7 @@ use warnings;
 
 use Mouse;
 use Gender;
+use namespace::autoclean;
 
 extends 'Person';
 with 'Gender';

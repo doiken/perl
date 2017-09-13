@@ -6,6 +6,7 @@ use warnings;
 #use FindBin;
 #use lib $FindBin::Bin . '/lib';
 
+print 1/undef;
 {
     my $i = 123;
 #    print unpack("H*", $i);

@@ -14,14 +14,18 @@ sub new {
     return bless $self, $class;
 }
 
+sub echo_hoge {
+    print $_[0]->{hoge}, "\n";
+}
+
 sub age {
     my $self = shift;
-    print $self;
+    print $self, "\n";
     return $self->{Age};
 }
 sub says {
     my $self = shift;
-    print $self->age() . "\n";
+    print "I'm ". $self->age() . " year old\n";
     print "Hello, I am " . $self->{Name} . " !\n";
 }
 

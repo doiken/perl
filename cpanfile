@@ -11,5 +11,8 @@ requires 'Data::MessagePack::Stream';
 requires 'Text::Ux';
 requires 'Parallel::ForkManager';
 requires 'autovivification';
+requires 'Test::Valgrind';
+requires 'AnyEvent::Util';
+requires 'MIME::Base64::URLSafe';
 
 # requires 'TokyoCabinet';

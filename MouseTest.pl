@@ -7,7 +7,8 @@ use lib $FindBin::Bin . '/lib';
 
 use Man;
 
-my $m = Man->new(ssn => 0, foo => 'hello');
+$a = {ssn => 100, foo => 'hello', prop_not_exist => 1000};
+my $m = Man->new($a);
 print $m->gender . "\n";
 print $m->ssn, "\n";
 print $m->foo_star, "\n";

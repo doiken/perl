@@ -14,6 +14,9 @@ use Klass;
 
 my $k = Klass->new();
 $k->says();
+$k->{hoge} = 11111111111;
+print $k->echo_hoge;
+
 
 ##
 ## Child

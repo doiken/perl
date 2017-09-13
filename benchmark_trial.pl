@@ -3,20 +3,15 @@ use strict;
 use warnings;
 
 use Benchmark qw(:all) ;
+use FoO;
+my $foo = FoO->new;
 
-sub sub_normal {
-    1+1;
-}
-
-sub sub_normal_with_proto() {
-    1+1;
-}
-
-cmpthese(100_000_000, {
-    'sub_normal' => sub { sub_normal(); },
-    'sub_normal_with_proto' => sub { sub_normal_with_proto(); },
-    'sub_referende' => \&sub_normal,
-    'sub_inline' => sub { 1+1; },
+my $hash = +{ map { $_ => $_ } (0 .. 50) };
+cmpthese(1_000_000, {
+    'bar' => sub { $foo->bar(1, 2, $hash); },
+#    'baz' => sub { $foo->baz(1, 2, +{ map { $_ => $)} 0 .. 100 }; },
+#    'bar(static)' => sub { FoO::bar(undef, 1, 2, +{ map { $_ => $)} 0 .. 100 }); },
+    'baz(static)' => sub { FoO::baz undef, 1, 2, $hash; },
 });
 
 __END__;
