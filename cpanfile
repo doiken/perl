@@ -14,5 +14,7 @@ requires 'autovivification';
 requires 'Test::Valgrind';
 requires 'AnyEvent::Util';
 requires 'MIME::Base64::URLSafe';
+requires 'Digest::FarmHash';
+requires 'Digest::MurmurHash3';
 
 # requires 'TokyoCabinet';

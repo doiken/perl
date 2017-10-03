@@ -744,6 +744,16 @@ DISTRIBUTIONS
     requirements:
       Devel::StackTrace 0
       ExtUtils::MakeMaker 0
+  Digest-FarmHash-0.01
+    pathname: J/JI/JIRO/Digest-FarmHash-0.01.tar.gz
+    provides:
+      Digest::FarmHash 0.01
+    requirements:
+      ExtUtils::CBuilder 0
+      ExtUtils::ParseXS 0
+      Module::Build 0.4005
+      parent 0
+      perl 5.008005
   Digest-HMAC-1.03
     pathname: G/GA/GAAS/Digest-HMAC-1.03.tar.gz
     provides:
@@ -755,6 +765,15 @@ DISTRIBUTIONS
       Digest::SHA 1
       ExtUtils::MakeMaker 0
       perl 5.004
+  Digest-MurmurHash3-0.03
+    pathname: D/DM/DMAKI/Digest-MurmurHash3-0.03.tar.gz
+    provides:
+      Digest::MurmurHash3 0.03
+    requirements:
+      Devel::PPPort 3.19
+      ExtUtils::MakeMaker 6.36
+      ExtUtils::ParseXS 3.18
+      XSLoader 0.02
   Digest-SHA1-2.13
     pathname: G/GA/GAAS/Digest-SHA1-2.13.tar.gz
     provides:
