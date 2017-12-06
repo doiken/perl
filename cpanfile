@@ -16,5 +16,7 @@ requires 'AnyEvent::Util';
 requires 'MIME::Base64::URLSafe';
 requires 'Digest::FarmHash';
 requires 'Digest::MurmurHash3';
+requires 'Memcached::Client';
+requires 'Cache::Memcached::AnyEvent';
 
 # requires 'TokyoCabinet';

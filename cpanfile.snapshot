@@ -235,6 +235,33 @@ DISTRIBUTIONS
       perl 5.008001
       strict 0
       warnings 0
+  Cache-Memcached-AnyEvent-0.00023
+    pathname: D/DM/DMAKI/Cache-Memcached-AnyEvent-0.00023.tar.gz
+    provides:
+      Cache::Memcached::AnyEvent 0.00023
+      Cache::Memcached::AnyEvent::Protocol undef
+      Cache::Memcached::AnyEvent::Protocol::Binary undef
+      Cache::Memcached::AnyEvent::Protocol::Text undef
+      Cache::Memcached::AnyEvent::Selector::Ketama undef
+      Cache::Memcached::AnyEvent::Selector::Traditional undef
+      Cache::Memcached::AnyEvent::Serializer::JSON undef
+      Cache::Memcached::AnyEvent::Serializer::MessagePack undef
+      Cache::Memcached::AnyEvent::Serializer::Storable undef
+    requirements:
+      AnyEvent 0
+      AnyEvent::Handle 0
+      AnyEvent::Socket 0
+      Class::Accessor::Lite 0
+      ExtUtils::MakeMaker 6.36
+      Module::Build 0.38
+      Module::Runtime 0
+      Storable 0
+      String::CRC32 0
+      Task::Weaken 0
+      Test::Fatal 0
+      Test::Memcached 0.00003
+      Test::More 0.94
+      Test::Requires 0
   Cache-Memcached-Fast-0.23
     pathname: K/KR/KROKI/Cache-Memcached-Fast-0.23.tar.gz
     provides:
@@ -1384,6 +1411,15 @@ DISTRIBUTIONS
     requirements:
       ExtUtils::MakeMaker 0
       Test::More 0
+  JSON-XS-3.04
+    pathname: M/ML/MLEHMANN/JSON-XS-3.04.tar.gz
+    provides:
+      JSON::XS 3.04
+    requirements:
+      Canary::Stability 0
+      ExtUtils::MakeMaker 6.52
+      Types::Serialiser 0
+      common::sense 0
   JavaScript-Value-Escape-0.07
     pathname: K/KA/KAZEBURO/JavaScript-Value-Escape-0.07.tar.gz
     provides:
@@ -1446,6 +1482,55 @@ DISTRIBUTIONS
       ExtUtils::MakeMaker 6.42
       Test::More 0.86
       perl 5.006
+  Memcached-Client-2.01
+    pathname: M/MD/MDORMAN/Memcached-Client-2.01.tar.gz
+    provides:
+      Memcached::Client 2.01
+      Memcached::Client::Compressor 2.01
+      Memcached::Client::Compressor::Gzip 2.01
+      Memcached::Client::Connection 2.01
+      Memcached::Client::Log 2.01
+      Memcached::Client::Protocol 2.01
+      Memcached::Client::Protocol::Binary 2.01
+      Memcached::Client::Protocol::Text 2.01
+      Memcached::Client::Request 2.01
+      Memcached::Client::Request::Add 2.01
+      Memcached::Client::Request::AddMulti 2.01
+      Memcached::Client::Request::Broadcast 2.01
+      Memcached::Client::Request::BroadcastMulti 2.01
+      Memcached::Client::Request::Connect 2.01
+      Memcached::Client::Request::ConnectMulti 2.01
+      Memcached::Client::Request::Decr 2.01
+      Memcached::Client::Request::DecrMulti 2.01
+      Memcached::Client::Request::Delete 2.01
+      Memcached::Client::Request::DeleteMulti 2.01
+      Memcached::Client::Request::Get 2.01
+      Memcached::Client::Request::GetMulti 2.01
+      Memcached::Client::Selector 2.01
+      Memcached::Client::Selector::Traditional 2.01
+      Memcached::Client::Serializer 2.01
+      Memcached::Client::Serializer::JSON 2.01
+      Memcached::Client::Serializer::Storable 2.01
+    requirements:
+      AnyEvent 0
+      AnyEvent::Handle 0
+      Compress::Zlib 0
+      Config 0
+      Data::Dumper 0
+      Exporter 0
+      ExtUtils::MakeMaker 6.31
+      IO::File 0
+      IO::Socket::INET 0
+      JSON 0
+      JSON::XS 0
+      Module::Load 0
+      POSIX 0
+      Scalar::Util 0
+      Storable 0
+      String::CRC32 0
+      Test::More 0
+      bytes 0
+      constant 0
   Minilla-v3.0.4
     pathname: S/SY/SYOHEX/Minilla-v3.0.4.tar.gz
     provides:
@@ -3257,6 +3342,12 @@ DISTRIBUTIONS
     requirements:
       ExtUtils::MakeMaker 6.30
       IO::File 1.14
+  String-CRC32-1.6
+    pathname: L/LE/LEEJO/String-CRC32-1.6.tar.gz
+    provides:
+      String::CRC32 1.6
+    requirements:
+      ExtUtils::MakeMaker 0
   String-Format-1.17
     pathname: D/DA/DARREN/String-Format-1.17.tar.gz
     provides:
@@ -3470,6 +3561,18 @@ DISTRIBUTIONS
       perl 5.006001
       strict 0
       warnings 0
+  Test-Fatal-0.014
+    pathname: R/RJ/RJBS/Test-Fatal-0.014.tar.gz
+    provides:
+      Test::Fatal 0.014
+    requirements:
+      Carp 0
+      Exporter 5.57
+      ExtUtils::MakeMaker 0
+      Test::Builder 0
+      Try::Tiny 0.07
+      strict 0
+      warnings 0
   Test-Harness-3.36
     pathname: L/LE/LEONT/Test-Harness-3.36.tar.gz
     provides:
@@ -3532,6 +3635,18 @@ DISTRIBUTIONS
       Test::Builder 0
       Test::Builder::Tester 0
       Test::More 0
+  Test-Memcached-0.00004
+    pathname: D/DM/DMAKI/Test-Memcached-0.00004.tar.gz
+    provides:
+      Test::Memcached 0.00004
+    requirements:
+      Class::Accessor::Lite 0
+      Cwd 0
+      ExtUtils::MakeMaker 6.42
+      File::Temp 0
+      IO::Socket::INET 0
+      Test::More 0.94
+      Time::HiRes 0
   Test-Object-0.07
     pathname: A/AD/ADAMK/Test-Object-0.07.tar.gz
     provides:
